@@ -15,15 +15,14 @@ describe('README.md examples', () => {
   const placedOrders = orderStatusIndex.get('PLACED');
 
   it('returns indexed objects', () => {
-    console.log(placedOrders);
-    console.log(exampleOrder);
-    expect(exampleOrder).to.eq(placedOrders?.['0']);
+    expect(exampleOrder).to.eq(placedOrders?.values().next().value);
   });
   it('updates indexes when values change', () => {
     exampleOrder.status = 'SHIPPED';
-    expect(placedOrders?.length).to.eq(0);
     const shippedOrders = orderStatusIndex.get('SHIPPED');
-    expect(exampleOrder).to.eq(shippedOrders?.shift());
+
+    expect(placedOrders?.size).to.eq(0);
+    expect(exampleOrder).to.eq(shippedOrders?.values().next().value);
   });
 });
 
