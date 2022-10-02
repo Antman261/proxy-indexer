@@ -3,49 +3,81 @@ import { Captor, IndexOptions } from './common';
 type IndexableObj = Record<string, unknown>;
 
 export type HashIndexOptions = IndexOptions;
-export type HashIndex<T extends IndexableObj, TargetProp extends keyof T> = {
-  get: (value: T[TargetProp]) => Set<T> | undefined;
-};
+export type HashIndex<
+  T extends IndexableObj,
+  TargetProp extends Array<keyof T>
+> = Record<
+  string,
+  {
+    get: (value: T[TargetProp[0]]) => Set<T> | undefined;
+  }
+>;
+type TargetProperties = HashIndexOptions['targetProperties'];
+type TargetProperty = string;
 
 export function createHashIndex<T extends IndexableObj>(
   opts: HashIndexOptions
-): [HashIndex<T, typeof opts['targetProperty']>, Captor<T>] {
-  const indexData = new Map<T[typeof opts['targetProperty']], Set<T>>();
-  const { targetProperty } = opts;
+): [HashIndex<T, TargetProperties>, Captor<T>] {
+  const { targetProperties } = opts;
+  const indexes = new Map<TargetProperty, Map<T[TargetProperty], Set<T>>>();
+  targetProperties.forEach((targetProperty) => {
+    indexes.set(targetProperty, new Map<T[TargetProperty], Set<T>>());
+  });
 
   const captorFunction: Captor<T> = (obj) => {
     const proxy = new Proxy(obj, {
       set(target: T, propName: never, newValue: any): boolean {
-        // @ts-ignore
         const isUpdating =
-          propName === targetProperty && target[propName] !== newValue;
+          targetProperties.includes(propName) && target[propName] !== newValue;
         if (isUpdating) {
           const oldSpecifier = target[propName] as never;
-          const oldIndexValues = indexData.get(oldSpecifier);
+          const index = indexes.get(propName);
+          if (!index) {
+            throw new Error(`Index missing for property [${propName}]`);
+          }
+          const oldIndexValues = index.get(oldSpecifier);
           if (!oldIndexValues) {
             throw new Error(
-              `Object was not captured correctly, missing index for ${oldSpecifier}`
+              `Object was not captured correctly, missing index for ${propName}:${oldSpecifier}`
             );
           }
           oldIndexValues.delete(proxy);
 
-          insertIntoIndex(newValue, proxy, indexData);
+          insertIntoIndex(newValue, proxy, index);
         }
         // @ts-ignore
         target[propName] = newValue;
         return true;
       },
     });
-    const specifier = obj[targetProperty] as never;
-    insertIntoIndex(specifier, proxy, indexData);
+    targetProperties.forEach((targetProperty) => {
+      const specifier = obj[targetProperty] as never;
+      const index = indexes.get(targetProperty);
+      if (!index) {
+        throw new Error(`Index missing for property [${targetProperty}]`);
+      }
+      insertIntoIndex(specifier, proxy, index);
+    });
 
     return proxy;
   };
 
   return [
-    {
-      get: (val) => indexData.get(val),
-    },
+    targetProperties.reduce<HashIndex<T, TargetProperties>>(
+      (acc, targetProperty) => {
+        acc[`${targetProperty}Index`] = {
+          get: (val) => {
+            const returnValue = indexes?.get(targetProperty)?.get(val);
+            if (!returnValue) {
+              throw new Error('ffs');
+            }
+            return returnValue;
+          },
+        };
+        return acc;
+      },
+      {}
+    ),
     captorFunction,
   ];
 }

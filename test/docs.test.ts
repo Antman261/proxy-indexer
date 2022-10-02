@@ -1,13 +1,14 @@
 import { expect } from 'chai';
-import { createHashIndex } from '../src/indexes/hash';
+import { createHashIndex } from '../src';
 import { performance } from 'perf_hooks';
 
 type Order = { orderId: string; status: string; cost: number };
 
 describe('README.md examples', () => {
-  const [orderStatusIndex, captureOrder] = createHashIndex<Order>({
-    targetProperty: 'status',
-  });
+  const [{ statusIndex: orderStatusIndex }, captureOrder] =
+    createHashIndex<Order>({
+      targetProperties: ['status'],
+    });
   const exampleOrder = captureOrder({
     orderId: '123abc',
     status: 'PLACED',
@@ -26,8 +27,8 @@ describe('README.md examples', () => {
     expect(exampleOrder).to.eq(shippedOrders?.values().next().value);
   });
   describe('Performance tests', function () {
-    const [orderStatusIndex, captureOrder] = createHashIndex({
-      targetProperty: 'status',
+    const [{ statusIndex: orderStatusIndex }, captureOrder] = createHashIndex({
+      targetProperties: ['status'],
     });
     const statusMap = {
       0: 'PLACED',

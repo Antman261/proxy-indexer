@@ -1,5 +1,5 @@
 export type IndexOptions = {
-  targetProperty: string;
+  targetProperties: string[];
 };
 
 export type Captor<T> = (obj: T) => T;
