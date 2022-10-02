@@ -1,6 +1,4 @@
-import { Captor, IndexOptions } from './common';
-
-type IndexableObj = Record<string, unknown>;
+import { Captor, IndexableObj, IndexOptions } from './common';
 
 export type HashIndexOptions = IndexOptions;
 export type HashIndex<

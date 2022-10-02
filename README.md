@@ -9,25 +9,26 @@ a set of orders based on their order status. However, their order status frequen
 Proxy-indexer makes this process transparent via the following API:
 
 ```ts
-import { createHashIndex } from 'proxy-indexer';
+import { createIndexes } from 'proxy-indexer';
 
-const [{ statusIndex: orderStatusIndex }, captureOrder] = createHashIndex({
-  targetProperties: ['status'],
+const [{ statusIndex }, captureOrder] = createIndexes({
+  hash: {targetProperties: ['status']}
 });
 
 const exampleOrder = captureOrder({
   orderId: '123abc',
   status: 'PLACED',
+  cost: 400
 });
 
-const placedOrders = orderStatusIndex.get('PLACED');
+const placedOrders = statusIndex.get('PLACED');
 console.log(exampleOrder === placedOrders.values().next().value); // true
 
 exampleOrder.status = 'SHIPPED';
 
 console.log(placedOrders.size); // 0
 
-const shippedOrders = orderStatusIndex.get('SHIPPED');
+const shippedOrders = statusIndex.get('SHIPPED');
 console.log(exampleOrder === shippedOrders.values().next().value); // true
 ```
 
@@ -130,4 +131,21 @@ const createCustomer = (name: string, country: 'US' | 'AU' | 'NZ' | 'UK' | 'FR')
     status: 'PENDING'
   });
 }
+```
+
+### Binary search indexes for sortable properties
+
+Let's go back to the first example and create a binary search index on cost as well:
+
+```ts
+const [{ statusIndex, costIndex }, captureOrder] = createIndexes({
+  hash: {targetProperties: ['status']},
+  binarySearch: {targetProperties: ['cost']}
+});
+
+const exampleOrder = captureOrder({
+  orderId: '123abc',
+  status: 'PLACED',
+  cost: 400
+});
 ```
