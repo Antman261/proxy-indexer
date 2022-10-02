@@ -22,12 +22,63 @@ const exampleOrder = captureOrder({
 });
 
 const placedOrders = orderStatusIndex.get('PLACED');
-console.log(exampleOrder === placedOrders[0]); // true
+console.log(exampleOrder === placedOrders.values().next().value); // true
 
 exampleOrder.status = 'SHIPPED';
 
-console.log(placedOrders.length); // 0
+console.log(placedOrders.size); // 0
 
 const shippedOrders = orderStatusIndex.get('SHIPPED');
-console.log(exampleOrder === shippedOrders[0]); // true
+console.log(exampleOrder === shippedOrders.values().next().value); // true
+```
+
+In the above example you will notice that the size of the `placedOrders` set reduced from 1 to 0 
+as soon as we updated the target property (`status`) of our example order.
+
+When you have thousands of objects and need to look them up by a particular property, this 
+indexing method is more than 1000x times faster than the alternative -- iterating and filtering.
+
+```ts
+const [orderStatusIndex, captureOrder] = createHashIndex({
+  targetProperty: 'status',
+});
+
+const statusMap = { 0: 'PLACED', 1: 'SHIPPED', 2: 'DELIVERED', 3: 'CANCELLED'};
+const allObjects = Array.from(
+  { length: 125000 }, 
+  (_, i) => captureOrder({num: i, status: statusMap[i % 4] })
+);
+
+// Let's find all shipped orders the old fashioned way
+
+const shippedOld = Object.values(allObjects).filter(({status}) => status === 'SHIPPED');
+
+// And the new way
+
+const shipped = orderStatusIndex.get('SHIPPED');
+
+```
+
+Not only is the new way much faster, but `shipped` will always be up to date, while `shippedOld` 
+will contain incorrect records once a shipped order is updated to delivered -- it has to be 
+recalculated each time it is used.
+
+The following test run was performed on a Macbook Air with an M2 CPU and 16GB RAM
+
+```
+  README.md examples
+    ✔ returns indexed objects
+    ✔ updates indexes when values change
+    Performance tests
+Vanilla lookup: 4.186499834060669ms
+Indexed lookup: 0.0023751258850097656ms
+Index lookups are 1763 times faster
+      ✔ looks up objects more than 1000x faster
+Vanilla update: 0.0009169578552246094ms
+Indexed update: 0.001291036605834961ms
+Updates are 1.41 times slower
+      ✔ updates are not more than twice as slow
+
+
+  4 passing (9ms)
 ```
