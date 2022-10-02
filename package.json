@@ -19,7 +19,7 @@
     "watch": "npx mocha -w",
     "build": "npx tsc -p .",
     "build-docs": "npx typedoc --out docs src/index.ts --disableOutputCheck",
-    "prepublishOnly": "npm run build && npm run build-docs"
+    "prepublishOnly": "npm run build"
   },
   "prettier": {
     "singleQuote": true
