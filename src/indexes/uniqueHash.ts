@@ -6,7 +6,7 @@ import {
   TargetProperty,
 } from './common';
 
-export type HashIndexOptions = IndexOptions;
+export type UniqueIndexOptions = IndexOptions;
 export type HashIndex<
   T extends IndexableObj,
   TargetProp extends Array<keyof T>
@@ -17,8 +17,8 @@ export type HashIndex<
   }
 >;
 
-export function createHashIndex<T extends IndexableObj>(
-  opts: HashIndexOptions
+export function createUniqueHashIndex<T extends IndexableObj>(
+  opts: UniqueIndexOptions
 ): [HashIndex<T, TargetProperties>, Captor<T>] {
   const { targetProperties } = opts;
   const indexes = new Map<TargetProperty, Map<T[TargetProperty], Set<T>>>();
