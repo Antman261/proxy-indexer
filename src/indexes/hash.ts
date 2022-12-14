@@ -67,11 +67,7 @@ export function createHashIndex<T extends IndexableObj>(
       (acc, targetProperty) => {
         acc[`${targetProperty}Index`] = {
           get: (val) => {
-            const returnValue = indexes?.get(targetProperty)?.get(val);
-            if (!returnValue) {
-              throw new Error('ffs');
-            }
-            return returnValue;
+            return indexes?.get(targetProperty)?.get(val);
           },
         };
         return acc;
