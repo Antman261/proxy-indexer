@@ -131,3 +131,40 @@ const createCustomer = (name: string, country: 'US' | 'AU' | 'NZ' | 'UK' | 'FR')
   });
 }
 ```
+
+### Unique indexes that enforce one object per property
+
+What if we wanted to enforce that no two objects have the same property, and look them up by 
+that property? We can do that with a unique index.
+
+```ts
+const [{ statusHashIndex, orderIdUniqueIndex }, 
+  captureOrder] = createIndexes({
+  hash: {targetProperties: ['status']},
+  unique: {targetProperties: ['orderId']}
+});
+
+const exampleOrder = captureOrder({
+  orderId: '123abc',
+  status: 'PLACED',
+  cost: 400
+});
+
+const order = orderIdUniqueIndex.get('123abc')
+
+const duplicateOrder = captureOrder({
+  orderId: '123abc',
+  status: 'SHIPPED',
+  cost: 200
+}); // throws UniqueConstraintViolation!
+
+const updatedDuplicate = captureOrder({
+  orderId: '456zyx',
+  status: 'SHIPPED',
+  cost: 200
+});
+
+updatedDuplicate.orderId = '123abc'; // throws UniqueConstraintViolation!
+
+```
+

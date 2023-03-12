@@ -1,63 +1,77 @@
-import { HashIndex, HashIndexOptions } from './hash';
+import { createHashIndex, HashIndex } from './hash';
 import {
   Captor,
+  ConfigurationError,
   IndexableObj,
-  TargetProperties,
-  TargetProperty,
+  IndexOptions,
+  Ingestor,
+  Updater,
 } from './common';
-import { UniqueIndexOptions } from './uniqueHash';
+import { createUniqueHashIndex, UniqueIndex } from './uniqueHash';
 
-type Options = {
-  hash?: HashIndexOptions;
-  unique?: UniqueIndexOptions;
+type Options<T extends IndexableObj> = {
+  hash?: IndexOptions<T>;
+  unique?: IndexOptions<T>;
+};
+
+type Indexes<T extends IndexableObj> = {
+  hash: HashIndex<T>;
+  unique: UniqueIndex<T>;
 };
 
 export function createIndexes<T extends IndexableObj>(
-  opts: Options
-): [HashIndex<T, TargetProperties>, Captor<T>] {
+  opts: Options<T>
+): [Indexes<T>, Captor<T>] {
+  validateOptions(opts);
   const { hash: hashOpts, unique: uniqueOpts } = opts;
-  // create the complete list of target properties
-  // instantiate the indexes
 
-  const captorFunction: Captor<T> = (obj) => {
+  const [hashIdx, updateInHashIndex, ingestIntoHashIndex] = hashOpts
+    ? createHashIndex<T>(hashOpts)
+    : [];
+  const [uniqueIdx, updateInUniqueIndex, ingestIntoUniqueIndex] = uniqueOpts
+    ? createUniqueHashIndex<T>(uniqueOpts)
+    : [];
+
+  const updaters = [updateInUniqueIndex, updateInHashIndex].filter<Updater<T>>(
+    isNotUndefined
+  );
+  const ingestors = [ingestIntoUniqueIndex, ingestIntoHashIndex].filter<
+    Ingestor<T>
+  >(isNotUndefined);
+
+  const captureObject: Captor<T> = (obj) => {
     const proxy = new Proxy(obj, {
       set(target: T, propName: never, newValue: any): boolean {
-        const isUpdating =
-          targetProperties.includes(propName) && target[propName] !== newValue;
-        // any update to ANY target property for all indexes
-        if (isUpdating) {
-          const oldSpecifierValue = target[propName] as never;
-          // now call the update handler for each active index
-        }
+        updaters.forEach((updateIndexFunc) =>
+          updateIndexFunc(proxy, propName, newValue)
+        );
         // @ts-ignore
         target[propName] = newValue;
         return true;
       },
     });
-    targetProperties.forEach((targetProperty) => {
-      const specifierValue = obj[targetProperty] as never;
-      // initial value setter for captured object
-    });
+    ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(proxy));
 
     return proxy;
   };
 
-  return [
-    targetProperties.reduce<HashIndex<T, TargetProperties>>(
-      (acc, targetProperty) => {
-        acc[`${targetProperty}Index`] = {
-          get: (val) => {
-            const returnValue = indexes?.get(targetProperty)?.get(val);
-            if (!returnValue) {
-              throw new Error('ffs');
-            }
-            return returnValue;
-          },
-        };
-        return acc;
-      },
-      {}
-    ),
-    captorFunction,
-  ];
+  return [{ hash: hashIdx ?? {}, unique: uniqueIdx ?? {} }, captureObject];
+}
+
+function isNotUndefined<T>(element: any): element is T {
+  return element !== undefined;
+}
+
+function validateOptions<T extends IndexableObj>({ hash, unique }: Options<T>) {
+  if (hash === undefined || unique === undefined) {
+    return;
+  }
+  const combinedProps = [...hash.targetProperties, ...unique.targetProperties];
+  const deDupedProps = new Set(combinedProps);
+  if (deDupedProps.size !== combinedProps.length) {
+    const sharedProps = combinedProps.filter((prop) => deDupedProps.has(prop));
+    throw new ConfigurationError(
+      `Properties [${sharedProps}] used for both hash and unique index. A property must only be used in one type of index.`
+    );
+  }
 }

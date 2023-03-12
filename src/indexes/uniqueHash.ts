@@ -1,98 +1,96 @@
 import {
-  Captor,
   IndexableObj,
+  IndexError,
   IndexOptions,
-  TargetProperties,
+  Ingestor,
+  MissingIndex,
+  MissingIndexValue,
   TargetProperty,
+  Updater,
 } from './common';
 
-export type UniqueIndexOptions = IndexOptions;
-export type HashIndex<
-  T extends IndexableObj,
-  TargetProp extends Array<keyof T>
-> = Record<
+export type UniqueIndex<T extends IndexableObj> = Record<
   string,
   {
-    get: (value: T[TargetProp[0]]) => Set<T> | undefined;
+    get: (value: T[string]) => T | undefined;
   }
 >;
 
-export function createUniqueHashIndex<T extends IndexableObj>(
-  opts: UniqueIndexOptions
-): [HashIndex<T, TargetProperties>, Captor<T>] {
-  const { targetProperties } = opts;
-  const indexes = new Map<TargetProperty, Map<T[TargetProperty], Set<T>>>();
-  targetProperties.forEach((targetProperty) => {
-    indexes.set(targetProperty, new Map<T[TargetProperty], Set<T>>());
-  });
+export function createUniqueHashIndex<T extends IndexableObj>({
+  targetProperties,
+}: IndexOptions<T>): [UniqueIndex<T>, Updater<T>, Ingestor<T>] {
+  const indexes = initialiseIndex<T>(targetProperties);
 
-  const captorFunction: Captor<T> = (obj) => {
-    const proxy = new Proxy(obj, {
-      set(target: T, propName: never, newValue: any): boolean {
-        const isUpdating =
-          targetProperties.includes(propName) && target[propName] !== newValue;
-        if (isUpdating) {
-          const oldSpecifier = target[propName] as never;
-          const index = indexes.get(propName);
-          if (!index) {
-            throw new Error(`Index missing for property [${propName}]`);
-          }
-          const oldIndexValues = index.get(oldSpecifier);
-          if (!oldIndexValues) {
-            throw new Error(
-              `Object was not captured correctly, missing index for ${propName}:${oldSpecifier}`
-            );
-          }
-          oldIndexValues.delete(proxy);
+  const captureUpdate: Updater<T> = (obj, propName, newValue) => {
+    const oldValue = obj[propName] as T[string]; // ts is drunk
 
-          insertIntoIndex(newValue, proxy, index);
-        }
-        // @ts-ignore
-        target[propName] = newValue;
-        return true;
-      },
-    });
+    const isUpdating =
+      targetProperties.includes(propName) && oldValue !== newValue;
+    if (isUpdating) {
+      const index = indexes.get(propName);
+      if (!index) {
+        throw new MissingIndex(`Index missing for property [${propName}]`);
+      }
+      const oldIndexValue = index.has(oldValue);
+      if (!oldIndexValue) {
+        throw new MissingIndexValue(
+          `Object was not captured correctly, missing index value for ${propName}:${oldValue}`
+        );
+      }
+      index.delete(oldValue);
+      insertIntoIndex(newValue, obj, index, propName);
+    }
+  };
+  const ingestObject: Ingestor<T> = (obj) => {
     targetProperties.forEach((targetProperty) => {
       const specifier = obj[targetProperty] as never;
       const index = indexes.get(targetProperty);
       if (!index) {
-        throw new Error(`Index missing for property [${targetProperty}]`);
+        throw new MissingIndex(
+          `Index missing for property [${targetProperty}]`
+        );
       }
-      insertIntoIndex(specifier, proxy, index);
+      insertIntoIndex(specifier, obj, index, targetProperty);
     });
-
-    return proxy;
   };
 
   return [
-    targetProperties.reduce<HashIndex<T, TargetProperties>>(
-      (acc, targetProperty) => {
-        acc[`${targetProperty}Index`] = {
-          get: (val) => {
-            const returnValue = indexes?.get(targetProperty)?.get(val);
-            if (!returnValue) {
-              throw new Error('ffs');
-            }
-            return returnValue;
-          },
-        };
-        return acc;
-      },
-      {}
-    ),
-    captorFunction,
+    targetProperties.reduce<UniqueIndex<T>>((acc, targetProperty) => {
+      acc[`${targetProperty}Index`] = {
+        get: (val) => {
+          return indexes?.get(targetProperty)?.get(val);
+        },
+      };
+      return acc;
+    }, {}),
+    captureUpdate,
+    ingestObject,
   ];
+}
+
+function initialiseIndex<T extends IndexableObj>(targetProperties: string[]) {
+  const indexes = new Map<TargetProperty, Map<T[TargetProperty], T>>();
+  targetProperties.forEach((targetProperty) => {
+    indexes.set(targetProperty, new Map<T[TargetProperty], T>());
+  });
+  return indexes;
 }
 
 const insertIntoIndex = <T extends IndexableObj>(
   specifier: T[string],
   target: T,
-  index: Map<T[string], Set<T>>
+  index: Map<T[string], T>,
+  targetProperty: string
 ): void => {
   const hasExistingIndex = index.has(specifier);
-  if (!hasExistingIndex) {
-    index.set(specifier, new Set<T>());
+  if (hasExistingIndex) {
+    if (target !== index.get(specifier)) {
+      throw new UniqueConstraintViolation(
+        `Duplicate key value [${specifier}] already exists for property [${targetProperty}]`
+      );
+    }
   }
-  const newIndexValues = index.get(specifier);
-  newIndexValues?.add(target);
+  index.set(specifier, target);
 };
+
+export class UniqueConstraintViolation extends IndexError {}
