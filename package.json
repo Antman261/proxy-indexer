@@ -1,6 +1,6 @@
 {
   "name": "proxy-indexer",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Create self-updating, easy to use in-memory indexes.",
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
     "test": "npx mocha",
     "watch": "npx mocha -w",
     "build": "npx tsc -p .",
-    "build-docs": "npx typedoc --out docs src/index.ts --disableOutputCheck",
+    "build-docs": "npx typedoc --out docs src/index.ts",
     "commit": "npx cz",
     "release": "npm run build && npm run build-docs && git add . && standard-version",
     "prepublishOnly": "npm run build"
