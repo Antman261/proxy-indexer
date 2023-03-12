@@ -150,8 +150,12 @@ What if we wanted to enforce that no two objects have the same property, and loo
 that property? We can do that with a unique index.
 
 ```ts
-const [{ statusHashIndex, orderIdUniqueIndex }, 
-  captureOrder] = createIndexes({
+const [{ 
+    hash: {statusIndex}, 
+    unique: {orderIdIndex} 
+  }, 
+  captureOrder
+] = createIndexes({
   hash: {targetProperties: ['status']},
   unique: {targetProperties: ['orderId']}
 });
