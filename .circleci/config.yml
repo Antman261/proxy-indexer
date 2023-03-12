@@ -1,0 +1,19 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: cimg/node:14.17
+    steps:
+      - checkout
+      - run:
+          name: Install packages
+          command: npm i --ci
+      - run:
+          name: Run Tests
+          command: npm run test
+
+workflows:
+  orb-free-workflow:
+    jobs:
+      - test
