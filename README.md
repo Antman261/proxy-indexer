@@ -9,10 +9,15 @@ a set of orders based on their order status. However, their order status frequen
 Proxy-indexer makes this process transparent via the following API:
 
 ```ts
-import { createHashIndex } from 'proxy-indexer';
+import { createIndexes } from 'proxy-indexer';
 
-const [{ statusIndex: orderStatusIndex }, captureOrder] = createHashIndex({
-  targetProperties: ['status'],
+const [
+  { 
+    hash: { statusIndex: orderStatusIndex } 
+  }, 
+  captureOrder
+] = createIndexes({
+  hash: {targetProperties: ['status']}, 
 });
 
 const exampleOrder = captureOrder({
@@ -38,8 +43,13 @@ When you have thousands of objects and need to look them up by a particular prop
 indexing method is more than 1000x times faster than the alternative -- iterating and filtering.
 
 ```ts
-const [{ statusIndex: orderStatusIndex }, captureOrder] = createHashIndex({
-  targetProperties: ['status'],
+const [
+  {
+    hash: { statusIndex: orderStatusIndex }
+  },
+  captureOrder
+] = createIndexes({
+  hash: {targetProperties: ['status']},
 });
 
 const statusMap = { 0: 'PLACED', 1: 'SHIPPED', 2: 'DELIVERED', 3: 'CANCELLED'};
@@ -93,7 +103,7 @@ Using an index has two steps:
 Let's examine the first step now:
 
 ```ts
-import { createHashIndex } from 'proxy-indexer';
+import { createIndexes } from 'proxy-indexer';
 
 type Customer = {
   name: string;
@@ -102,15 +112,17 @@ type Customer = {
 }
 
 const [
-  { statusIndex, countryIndex }, 
+  {
+    hash: { statusIndex, countryIndex },
+  }, 
   captureCustomer
-] = createHashIndex<Customer>({
-  targetProperties: ['status', 'country'],
-});
+] = createIndexes<Customer>({
+  hash: { targetProperties: ['status', 'country'] },
+}); 
 ```
 
 In the above example we instantiate an index for our customer entity, with indexes on country 
-and status. The `createHashIndex` function returns a tuple containing:
+and status. The `createIndexes` function returns a tuple containing:
 
 * An object containing the indexes, each as a property keyed by `'${targetProperty}Index'`
 * A capture function
@@ -131,3 +143,46 @@ const createCustomer = (name: string, country: 'US' | 'AU' | 'NZ' | 'UK' | 'FR')
   });
 }
 ```
+
+### Unique indexes that enforce one object per property
+
+What if we wanted to enforce that no two objects have the same property, and look them up by 
+that property? We can do that with a unique index.
+
+```ts
+const [{ 
+    hash: {statusIndex}, 
+    unique: {orderIdIndex} 
+  }, 
+  captureOrder
+] = createIndexes({
+  hash: {targetProperties: ['status']},
+  unique: {targetProperties: ['orderId']}
+});
+
+const exampleOrder = captureOrder({
+  orderId: '123abc',
+  status: 'PLACED',
+  cost: 400
+});
+
+const order = orderIdUniqueIndex.get('123abc')
+
+const duplicateOrder = captureOrder({
+  orderId: '123abc',
+  status: 'SHIPPED',
+  cost: 200
+}); // throws UniqueConstraintViolation!
+
+const updatedDuplicate = captureOrder({
+  orderId: '456zyx',
+  status: 'SHIPPED',
+  cost: 200
+});
+
+updatedDuplicate.orderId = '123abc'; // throws UniqueConstraintViolation!
+```
+
+This is useful when an object has more than one identifier, such as an object that has an ID 
+from a third party system.
+

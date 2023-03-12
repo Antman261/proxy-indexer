@@ -1,5 +1,6 @@
 import {
   IndexableObj,
+  IndexError,
   IndexOptions,
   Ingestor,
   MissingIndex,
@@ -8,20 +9,21 @@ import {
   Updater,
 } from './common';
 
-export type HashIndex<T extends IndexableObj> = Record<
+export type UniqueIndex<T extends IndexableObj> = Record<
   string,
   {
-    get: (value: T[string]) => Set<T> | undefined;
+    get: (value: T[string]) => T | undefined;
   }
 >;
 
-export function createHashIndex<T extends IndexableObj>({
+export function createUniqueHashIndex<T extends IndexableObj>({
   targetProperties,
-}: IndexOptions<T>): [HashIndex<T>, Updater<T>, Ingestor<T>] {
+}: IndexOptions<T>): [UniqueIndex<T>, Updater<T>, Ingestor<T>] {
   const indexes = initialiseIndex<T>(targetProperties);
 
   const captureUpdate: Updater<T> = (obj, propName, newValue) => {
     const oldValue = obj[propName] as T[string]; // ts is drunk
+
     const isUpdating =
       targetProperties.includes(propName) && oldValue !== newValue;
     if (isUpdating) {
@@ -29,14 +31,14 @@ export function createHashIndex<T extends IndexableObj>({
       if (!index) {
         throw new MissingIndex(`Index missing for property [${propName}]`);
       }
-      const oldIndexValues = index.get(oldValue);
-      if (!oldIndexValues) {
+      const oldIndexValue = index.has(oldValue);
+      if (!oldIndexValue) {
         throw new MissingIndexValue(
           `Object was not captured correctly, missing index value for ${propName}:${oldValue}`
         );
       }
-      oldIndexValues.delete(obj);
-      insertIntoIndex(newValue, obj, index);
+      index.delete(oldValue);
+      insertIntoIndex(newValue, obj, index, propName);
     }
   };
   const ingestObject: Ingestor<T> = (obj) => {
@@ -48,12 +50,12 @@ export function createHashIndex<T extends IndexableObj>({
           `Index missing for property [${targetProperty}]`
         );
       }
-      insertIntoIndex(specifier, obj, index);
+      insertIntoIndex(specifier, obj, index, targetProperty);
     });
   };
 
   return [
-    targetProperties.reduce<HashIndex<T>>((acc, targetProperty) => {
+    targetProperties.reduce<UniqueIndex<T>>((acc, targetProperty) => {
       acc[`${targetProperty}Index`] = {
         get: (val) => {
           return indexes?.get(targetProperty)?.get(val);
@@ -67,9 +69,9 @@ export function createHashIndex<T extends IndexableObj>({
 }
 
 function initialiseIndex<T extends IndexableObj>(targetProperties: string[]) {
-  const indexes = new Map<TargetProperty, Map<T[TargetProperty], Set<T>>>();
+  const indexes = new Map<TargetProperty, Map<T[TargetProperty], T>>();
   targetProperties.forEach((targetProperty) => {
-    indexes.set(targetProperty, new Map<T[TargetProperty], Set<T>>());
+    indexes.set(targetProperty, new Map<T[TargetProperty], T>());
   });
   return indexes;
 }
@@ -77,12 +79,18 @@ function initialiseIndex<T extends IndexableObj>(targetProperties: string[]) {
 const insertIntoIndex = <T extends IndexableObj>(
   specifier: T[string],
   target: T,
-  index: Map<T[string], Set<T>>
+  index: Map<T[string], T>,
+  targetProperty: string
 ): void => {
   const hasExistingIndex = index.has(specifier);
-  if (!hasExistingIndex) {
-    index.set(specifier, new Set<T>());
+  if (hasExistingIndex) {
+    if (target !== index.get(specifier)) {
+      throw new UniqueConstraintViolation(
+        `Duplicate key value [${specifier}] already exists for property [${targetProperty}]`
+      );
+    }
   }
-  const newIndexValues = index.get(specifier);
-  newIndexValues?.add(target);
+  index.set(specifier, target);
 };
+
+export class UniqueConstraintViolation extends IndexError {}
