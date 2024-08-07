@@ -39,6 +39,17 @@ describe('README.md examples', () => {
     exampleOrder.orderId = '456zyx';
     expect(exampleOrder).to.eq(orderIdIndex.get('456zyx'));
   });
+  it('deletes entries from indexes', () => {
+    const delOrder =
+      captureOrder({
+        orderId: '90210',
+        status: 'PLACED',
+        cost: 120,
+      });
+    expect(delOrder).to.eq(orderIdIndex.get('90210'));
+    delOrder.deleteFromIndex();
+    expect(orderIdIndex.get('90210')).to.eq(undefined)
+  });
   it('throws when an object is captured that violates a unique constraint', () => {
     captureOrder({
       orderId: '1z2x3c',

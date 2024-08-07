@@ -1,11 +1,12 @@
 import {
+  Deleter,
   IndexableObj,
   IndexOptions,
   Ingestor,
   MissingIndex,
   MissingIndexValue,
   TargetProperty,
-  Updater,
+  Updater
 } from './common';
 
 export type HashIndex<T extends IndexableObj> = Record<
@@ -17,7 +18,7 @@ export type HashIndex<T extends IndexableObj> = Record<
 
 export function createHashIndex<T extends IndexableObj>({
   targetProperties,
-}: IndexOptions<T>): [HashIndex<T>, Updater<T>, Ingestor<T>] {
+}: IndexOptions<T>): [HashIndex<T>, Updater<T>, Ingestor<T>, Deleter<T>] {
   const indexes = initialiseIndex<T>(targetProperties);
 
   const captureUpdate: Updater<T> = (obj, propName, newValue) => {
@@ -51,6 +52,18 @@ export function createHashIndex<T extends IndexableObj>({
       insertIntoIndex(specifier, obj, index);
     });
   };
+  const deleteObject: Deleter<T> = (obj) => {
+    targetProperties.forEach((targetProperty) => {
+      const specifier = obj[targetProperty] as never;
+      const index = indexes.get(targetProperty);
+      if (!index) {
+        throw new MissingIndex(
+          `Index missing for property [${targetProperty}]`
+        );
+      }
+      deleteFromIndex(specifier, obj, index);
+    });
+  };
 
   return [
     targetProperties.reduce<HashIndex<T>>((acc, targetProperty) => {
@@ -63,6 +76,7 @@ export function createHashIndex<T extends IndexableObj>({
     }, {}),
     captureUpdate,
     ingestObject,
+    deleteObject,
   ];
 }
 
@@ -73,6 +87,14 @@ function initialiseIndex<T extends IndexableObj>(targetProperties: string[]) {
   });
   return indexes;
 }
+
+const deleteFromIndex = <T extends IndexableObj>(
+  specifier: T[string],
+  target: T,
+  index: Map<T[string], Set<T>>
+): void => {
+  index.get(specifier)?.delete(target);
+};
 
 const insertIntoIndex = <T extends IndexableObj>(
   specifier: T[string],
