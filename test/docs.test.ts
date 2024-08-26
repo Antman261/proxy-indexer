@@ -40,15 +40,20 @@ describe('README.md examples', () => {
     expect(exampleOrder).to.eq(orderIdIndex.get('456zyx'));
   });
   it('deletes entries from indexes', () => {
-    const delOrder =
-      captureOrder({
-        orderId: '90210',
-        status: 'PLACED',
-        cost: 120,
-      });
+    const delOrder = captureOrder({
+      orderId: '90210',
+      status: 'CANCELLED',
+      cost: 120,
+    });
+
+    expect(delOrder).to.eq(
+      orderStatusIndex.get('CANCELLED')?.values().next().value
+    );
     expect(delOrder).to.eq(orderIdIndex.get('90210'));
+
     delOrder.deleteFromIndex();
-    expect(orderIdIndex.get('90210')).to.eq(undefined)
+    expect(orderIdIndex.get('90210')).to.eq(undefined);
+    expect(orderStatusIndex.get('CANCELLED')?.size).eq(0);
   });
   it('throws when an object is captured that violates a unique constraint', () => {
     captureOrder({
