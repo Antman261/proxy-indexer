@@ -1,11 +1,13 @@
 import { createHashIndex, HashIndex } from './hash';
 import {
   Captor,
-  ConfigurationError, Deleter, Extension,
+  ConfigurationError,
+  Deleter,
+  Extension,
   IndexableObj,
   IndexOptions,
   Ingestor,
-  Updater
+  Updater,
 } from './common';
 import { createUniqueHashIndex, UniqueIndex } from './uniqueHash';
 
@@ -25,12 +27,14 @@ export function createIndexes<T extends IndexableObj>(
   validateOptions(opts);
   const { hash: hashOpts, unique: uniqueOpts } = opts;
 
-  const [hashIdx, updateInHashIndex, ingestIntoHashIndex, deleteFromHashIndex] = hashOpts
-    ? createHashIndex<T>(hashOpts)
-    : [];
-  const [uniqueIdx, updateInUniqueIndex, ingestIntoUniqueIndex, deleteFromUniqueIndex] = uniqueOpts
-    ? createUniqueHashIndex<T>(uniqueOpts)
-    : [];
+  const [hashIdx, updateInHashIndex, ingestIntoHashIndex, deleteFromHashIndex] =
+    hashOpts ? createHashIndex<T>(hashOpts) : [];
+  const [
+    uniqueIdx,
+    updateInUniqueIndex,
+    ingestIntoUniqueIndex,
+    deleteFromUniqueIndex,
+  ] = uniqueOpts ? createUniqueHashIndex<T>(uniqueOpts) : [];
 
   const updaters = [updateInUniqueIndex, updateInHashIndex].filter<Updater<T>>(
     isNotUndefined
@@ -43,20 +47,23 @@ export function createIndexes<T extends IndexableObj>(
   >(isNotUndefined);
 
   const captureObject: Captor<T> = (obj) => {
-    const proxy = new Proxy(Object.assign(obj, {
-      deleteFromIndex() {
-        deleters.forEach(deleteFromIndexFunc => deleteFromIndexFunc(obj))
+    const proxy = new Proxy(
+      Object.assign(obj, {
+        deleteFromIndex() {
+          deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
+        },
+      }),
+      {
+        set(target: T, propName: never, newValue: any): boolean {
+          updaters.forEach((updateIndexFunc) =>
+            updateIndexFunc(proxy, propName, newValue)
+          );
+          // @ts-ignore
+          target[propName] = newValue;
+          return true;
+        },
       }
-    }), {
-      set(target: T, propName: never, newValue: any): boolean {
-        updaters.forEach((updateIndexFunc) =>
-          updateIndexFunc(proxy, propName, newValue)
-        );
-        // @ts-ignore
-        target[propName] = newValue;
-        return true;
-      },
-    }) as T & Extension;
+    ) as T & Extension;
     ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(proxy));
 
     return proxy;

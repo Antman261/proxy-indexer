@@ -34,6 +34,9 @@
       "src/**/*.ts",
       "test/**/*.ts"
     ],
+    "spec": [
+      "test/**/*.ts"
+    ],
     "require": "ts-node/register"
   },
   "author": "Anthony Manning-Franklin <anthony.manning.franklin@gmail.com> (https://antman-does-software.com)",
