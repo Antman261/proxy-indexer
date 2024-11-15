@@ -7,7 +7,7 @@ import {
   IndexableObj,
   IndexOptions,
   Ingestor,
-  Updater,
+  Updater
 } from './common';
 import { createUniqueHashIndex, UniqueIndex } from './uniqueHash';
 
@@ -46,15 +46,22 @@ export function createIndexes<T extends IndexableObj>(
     Deleter<T>
   >(isNotUndefined);
 
-  const captureObject: Captor<T> = (obj) => {
+  const captureObject: Captor<T> = (obj: T): T & Extension<T> => {
+
+    const extendedObject = Object.assign(obj, {
+      deleteFromIndex() {
+        deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(obj));
+      },
+      getTarget() {
+        const {getTarget, deleteFromIndex, ...rest} = extendedObject;
+        return rest;
+      }
+    });
+
     const proxy = new Proxy(
-      Object.assign(obj, {
-        deleteFromIndex() {
-          deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
-        },
-      }),
+      extendedObject,
       {
-        set(target: T, propName: never, newValue: any): boolean {
+        set(target: T & Extension<T>, propName: never, newValue: any): boolean {
           updaters.forEach((updateIndexFunc) =>
             updateIndexFunc(proxy, propName, newValue)
           );
@@ -63,7 +70,7 @@ export function createIndexes<T extends IndexableObj>(
           return true;
         },
       }
-    ) as T & Extension;
+    );
     ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(proxy));
 
     return proxy;
