@@ -1,24 +1,16 @@
-import {
-  Captor,
-  Extension,
-  IndexableObj,
-} from './common';
+import { Captor, IndexableObj, IndexedObj } from './common';
 
 
 export function createNoopCaptor<T extends IndexableObj>(): Captor<T> {
-  const captureObject: Captor<T> = (obj: T): T & Extension<T> => {
-    const extendedObject = Object.assign(obj, {
+  return (obj: T): IndexedObj<T> => {
+    return Object.assign({}, obj, {
       deleteFromIndex() {
         // No-op
       },
       getTarget() {
-        const {getTarget, deleteFromIndex, ...rest} = extendedObject;
-        return rest;
-      }
+        return obj;
+      },
+      isProxy: true as const,
     });
-
-    return extendedObject;
   };
-
-  return captureObject;
 }

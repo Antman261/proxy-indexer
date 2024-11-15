@@ -3,7 +3,7 @@ import {
   Captor,
   ConfigurationError,
   Deleter,
-  Extension,
+  IndexedObj,
   IndexableObj,
   IndexOptions,
   Ingestor,
@@ -33,7 +33,7 @@ export function createIndexes<T extends IndexableObj>(
     uniqueIdx,
     updateInUniqueIndex,
     ingestIntoUniqueIndex,
-    deleteFromUniqueIndex,
+    deleteFromUniqueIndex
   ] = uniqueOpts ? createUniqueHashIndex<T>(uniqueOpts) : [];
 
   const updaters = [updateInUniqueIndex, updateInHashIndex].filter<Updater<T>>(
@@ -46,34 +46,35 @@ export function createIndexes<T extends IndexableObj>(
     Deleter<T>
   >(isNotUndefined);
 
-  const captureObject: Captor<T> = (obj: T): T & Extension<T> => {
+  const captureObject: Captor<T> = (obj: T): IndexedObj<T> => {
 
-    const extendedObject = Object.assign(obj, {
-      deleteFromIndex() {
-        deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(obj));
-      },
-      getTarget() {
-        const {getTarget, deleteFromIndex, ...rest} = extendedObject;
-        return rest;
-      }
-    });
-
-    const proxy = new Proxy(
-      extendedObject,
+    const proxy = new Proxy(obj,
       {
-        set(target: T & Extension<T>, propName: never, newValue: any): boolean {
+        set(target: T, propName: never, newValue: any): boolean {
           updaters.forEach((updateIndexFunc) =>
             updateIndexFunc(proxy, propName, newValue)
           );
           // @ts-ignore
           target[propName] = newValue;
           return true;
-        },
+        }
       }
     );
-    ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(proxy));
 
-    return proxy;
+    const extendedObject = Object.assign(proxy, {
+      deleteFromIndex() {
+        deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(obj));
+      },
+      getTarget() {
+        return obj;
+      },
+      isProxy: true as const,
+    });
+
+    ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(extendedObject));
+
+    return extendedObject;
+
   };
 
   return [{ hash: hashIdx ?? {}, unique: uniqueIdx ?? {} }, captureObject];
