@@ -186,3 +186,18 @@ updatedDuplicate.orderId = '123abc'; // throws UniqueConstraintViolation!
 
 This is useful when an object has more than one identifier, such as an object that has an ID 
 from a third party system.
+
+### Deleting objects
+
+Before dereferencing an object in your application, you must call delete on the object. This deletes it from all indexes. Proxy indexer adds the delete method to every captured object:
+
+```ts
+
+const exampleOrder = captureOrder({
+  orderId: '123abc',
+  status: 'PLACED',
+  cost: 400
+});
+
+exampleOrder.deleteFromIndexes()
+```

@@ -4,9 +4,13 @@ export declare type TargetProperty = string;
 export declare type IndexOptions<T extends IndexableObj> = {
     targetProperties: Properties;
 };
-export declare type Captor<T extends IndexableObj> = (obj: T) => T;
+export declare type Extension = {
+    deleteFromIndex: () => void;
+};
+export declare type Captor<T extends IndexableObj> = (obj: T) => T & Extension;
 export declare type Updater<T extends IndexableObj> = (obj: T, propName: string, newValue: T[string]) => void;
 export declare type Ingestor<T extends IndexableObj> = (obj: T) => void;
+export declare type Deleter<T extends IndexableObj> = (obj: T) => void;
 export declare class IndexError extends Error {
 }
 export declare class MissingIndex extends IndexError {
