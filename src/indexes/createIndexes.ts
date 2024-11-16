@@ -7,7 +7,7 @@ import {
   IndexableObj,
   IndexOptions,
   Ingestor,
-  Updater
+  Updater,
 } from './common';
 import { createUniqueHashIndex, UniqueIndex } from './uniqueHash';
 
@@ -33,7 +33,7 @@ export function createIndexes<T extends IndexableObj>(
     uniqueIdx,
     updateInUniqueIndex,
     ingestIntoUniqueIndex,
-    deleteFromUniqueIndex
+    deleteFromUniqueIndex,
   ] = uniqueOpts ? createUniqueHashIndex<T>(uniqueOpts) : [];
 
   const updaters = [updateInUniqueIndex, updateInHashIndex].filter<Updater<T>>(
@@ -47,23 +47,20 @@ export function createIndexes<T extends IndexableObj>(
   >(isNotUndefined);
 
   const captureObject: Captor<T> = (obj: T): IndexedObj<T> => {
-
-    const proxy = new Proxy(obj,
-      {
-        set(target: T, propName: never, newValue: any): boolean {
-          updaters.forEach((updateIndexFunc) =>
-            updateIndexFunc(proxy, propName, newValue)
-          );
-          // @ts-ignore
-          target[propName] = newValue;
-          return true;
-        }
-      }
-    );
+    const proxy = new Proxy(obj, {
+      set(target: T, propName: never, newValue: any): boolean {
+        updaters.forEach((updateIndexFunc) =>
+          updateIndexFunc(proxy, propName, newValue)
+        );
+        // @ts-ignore
+        target[propName] = newValue;
+        return true;
+      },
+    });
 
     const extendedObject = Object.assign(proxy, {
       deleteFromIndex() {
-        deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(obj));
+        deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
       },
       getTarget() {
         return obj;
@@ -74,7 +71,6 @@ export function createIndexes<T extends IndexableObj>(
     ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(extendedObject));
 
     return extendedObject;
-
   };
 
   return [{ hash: hashIdx ?? {}, unique: uniqueIdx ?? {} }, captureObject];
