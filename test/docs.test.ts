@@ -42,18 +42,37 @@ describe('README.md examples', () => {
   it('deletes entries from indexes', () => {
     const delOrder = captureOrder({
       orderId: '90210',
-      status: 'CANCELLED',
+      status: 'AWAITING_PICKUP',
       cost: 120,
     });
 
     expect(delOrder).to.eq(
-      orderStatusIndex.get('CANCELLED')?.values().next().value
+      orderStatusIndex.get('AWAITING_PICKUP')?.values().next().value
     );
     expect(delOrder).to.eq(orderIdIndex.get('90210'));
 
     delOrder.deleteFromIndex();
     expect(orderIdIndex.get('90210')).to.eq(undefined);
-    expect(orderStatusIndex.get('CANCELLED')?.size).eq(0);
+    expect(orderStatusIndex.get('AWAITING_PICKUP')?.size).eq(0);
+  });
+  it('returns the target object from getTarget, including updates made to the proxied object', () => {
+    const order = {
+      orderId: '90210',
+      status: 'PLACED',
+      cost: 120,
+    };
+    const capturedOrder = captureOrder(order);
+    capturedOrder.status = 'DISPATCHED';
+
+    expect(capturedOrder).to.eq(
+      orderStatusIndex.get('DISPATCHED')?.values().next().value
+    );
+    expect(capturedOrder.getTarget()).to.eq(order);
+    expect(capturedOrder.getTarget().status).to.eq('DISPATCHED');
+  });
+  it('reports its proxy status via isProxy', () => {
+    const order = orderStatusIndex.get('SHIPPED')?.values().next().value;
+    expect(order.isProxy).to.eq(true);
   });
   it('throws when an object is captured that violates a unique constraint', () => {
     captureOrder({

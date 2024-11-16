@@ -3,7 +3,7 @@ import {
   Captor,
   ConfigurationError,
   Deleter,
-  Extension,
+  IndexedObj,
   IndexableObj,
   IndexOptions,
   Ingestor,
@@ -46,27 +46,31 @@ export function createIndexes<T extends IndexableObj>(
     Deleter<T>
   >(isNotUndefined);
 
-  const captureObject: Captor<T> = (obj) => {
-    const proxy = new Proxy(
-      Object.assign(obj, {
-        deleteFromIndex() {
-          deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
-        },
-      }),
-      {
-        set(target: T, propName: never, newValue: any): boolean {
-          updaters.forEach((updateIndexFunc) =>
-            updateIndexFunc(proxy, propName, newValue)
-          );
-          // @ts-ignore
-          target[propName] = newValue;
-          return true;
-        },
-      }
-    ) as T & Extension;
-    ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(proxy));
+  const captureObject: Captor<T> = (obj: T): IndexedObj<T> => {
+    const proxy = new Proxy(obj, {
+      set(target: T, propName: never, newValue: any): boolean {
+        updaters.forEach((updateIndexFunc) =>
+          updateIndexFunc(proxy, propName, newValue)
+        );
+        // @ts-ignore
+        target[propName] = newValue;
+        return true;
+      },
+    });
 
-    return proxy;
+    const extendedObject = Object.assign(proxy, {
+      deleteFromIndex() {
+        deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
+      },
+      getTarget() {
+        return obj;
+      },
+      isProxy: true as const,
+    });
+
+    ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(extendedObject));
+
+    return extendedObject;
   };
 
   return [{ hash: hashIdx ?? {}, unique: uniqueIdx ?? {} }, captureObject];

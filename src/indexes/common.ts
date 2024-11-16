@@ -6,10 +6,14 @@ export type TargetProperty = string;
 export type IndexOptions<T extends IndexableObj> = {
   targetProperties: Properties;
 };
-export type Extension = {
-  deleteFromIndex: () => void ;
-};
-export type Captor<T extends IndexableObj> = (obj: T) => T & Extension;
+export type IndexedObj<T extends IndexableObj> = Omit<T, 'deleteFromIndex' | 'getTarget' | 'isProxy'> &
+  {
+    deleteFromIndex: () => void;
+    getTarget: () => T;
+    isProxy: true;
+  }
+
+export type Captor<T extends IndexableObj> = (obj: T) => IndexedObj<T>;
 export type Updater<T extends IndexableObj> = (
   obj: T,
   propName: string,
