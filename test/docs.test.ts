@@ -69,6 +69,15 @@ describe('README.md examples', () => {
     );
     expect(capturedOrder.getTarget()).to.eq(order);
     expect(capturedOrder.getTarget().status).to.eq('DISPATCHED');
+
+    // None of the methods added to extend the proxy should ever be assigned to
+    // the target.
+    // @ts-expect-error
+    expect(capturedOrder.getTarget().deleteFromIndex).to.eq(undefined);
+    // @ts-expect-error
+    expect(capturedOrder.getTarget().getTarget).to.eq(undefined);
+    // @ts-expect-error
+    expect(capturedOrder.getTarget().isProxy).to.eq(undefined);
   });
   it('reports its proxy status via isProxy', () => {
     const order = orderStatusIndex.get('SHIPPED')?.values().next().value;
