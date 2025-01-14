@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.3](https://github.com/Antman261/proxy-indexer/compare/v0.3.2...v0.3.3) (2025-01-14)
+
+
+### Bug Fixes
+
+* Functions and properties used to extend the proxy object being assigned to the proxy target ([#6](https://github.com/Antman261/proxy-indexer/issues/6)) ([a3ac0c7](https://github.com/Antman261/proxy-indexer/commit/a3ac0c7e80e2c10278d3cd97f544a99b666aa862))
+
 ### [0.3.2](https://github.com/Antman261/proxy-indexer/compare/v0.3.1...v0.3.2) (2024-11-16)
 
 
