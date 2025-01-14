@@ -4,7 +4,7 @@ export declare type TargetProperty = string;
 export declare type IndexOptions<T extends IndexableObj> = {
     targetProperties: Properties;
 };
-export declare type IndexedObj<T extends IndexableObj> = Omit<T, 'deleteFromIndex' | 'getTarget' | 'isProxy'> & {
+export declare type IndexedObj<T extends IndexableObj> = T & {
     deleteFromIndex: () => void;
     getTarget: () => T;
     isProxy: true;
