@@ -56,21 +56,26 @@ export function createIndexes<T extends IndexableObj>(
         target[propName] = newValue;
         return true;
       },
-    });
+      get(target: T, p: string | symbol): any {
+        if (p === 'deleteFromIndex') {
+          return () => {
+            deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
+          }
+        }
+        if (p === 'getTarget') {
+          return () => obj;
+        }
+        if (p === 'isProxy') {
+          return true;
+        }
+        // @ts-ignore
+        return target[p];
+      }
+    }) as IndexedObj<T>;
 
-    const extendedObject = Object.assign(proxy, {
-      deleteFromIndex() {
-        deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
-      },
-      getTarget() {
-        return obj;
-      },
-      isProxy: true as const,
-    });
+    ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(proxy));
 
-    ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(extendedObject));
-
-    return extendedObject;
+    return proxy;
   };
 
   return [{ hash: hashIdx ?? {}, unique: uniqueIdx ?? {} }, captureObject];
