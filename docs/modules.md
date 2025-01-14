@@ -40,4 +40,4 @@
 
 #### Defined in
 
-[src/indexes/createIndexes.ts:22](https://github.com/Antman261/proxy-indexer/blob/d5e87a6/src/indexes/createIndexes.ts#L22)
+[src/indexes/createIndexes.ts:24](https://github.com/Antman261/proxy-indexer/blob/f16f01e/src/indexes/createIndexes.ts#L24)

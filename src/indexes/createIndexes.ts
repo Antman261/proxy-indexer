@@ -2,6 +2,8 @@ import { createHashIndex, HashIndex } from './hash';
 import {
   Captor,
   ConfigurationError,
+  Deleter,
+  IndexedObj,
   IndexableObj,
   IndexOptions,
   Ingestor,
@@ -25,12 +27,14 @@ export function createIndexes<T extends IndexableObj>(
   validateOptions(opts);
   const { hash: hashOpts, unique: uniqueOpts } = opts;
 
-  const [hashIdx, updateInHashIndex, ingestIntoHashIndex] = hashOpts
-    ? createHashIndex<T>(hashOpts)
-    : [];
-  const [uniqueIdx, updateInUniqueIndex, ingestIntoUniqueIndex] = uniqueOpts
-    ? createUniqueHashIndex<T>(uniqueOpts)
-    : [];
+  const [hashIdx, updateInHashIndex, ingestIntoHashIndex, deleteFromHashIndex] =
+    hashOpts ? createHashIndex<T>(hashOpts) : [];
+  const [
+    uniqueIdx,
+    updateInUniqueIndex,
+    ingestIntoUniqueIndex,
+    deleteFromUniqueIndex,
+  ] = uniqueOpts ? createUniqueHashIndex<T>(uniqueOpts) : [];
 
   const updaters = [updateInUniqueIndex, updateInHashIndex].filter<Updater<T>>(
     isNotUndefined
@@ -38,8 +42,11 @@ export function createIndexes<T extends IndexableObj>(
   const ingestors = [ingestIntoUniqueIndex, ingestIntoHashIndex].filter<
     Ingestor<T>
   >(isNotUndefined);
+  const deleters = [deleteFromHashIndex, deleteFromUniqueIndex].filter<
+    Deleter<T>
+  >(isNotUndefined);
 
-  const captureObject: Captor<T> = (obj) => {
+  const captureObject: Captor<T> = (obj: T): IndexedObj<T> => {
     const proxy = new Proxy(obj, {
       set(target: T, propName: never, newValue: any): boolean {
         updaters.forEach((updateIndexFunc) =>
@@ -49,7 +56,23 @@ export function createIndexes<T extends IndexableObj>(
         target[propName] = newValue;
         return true;
       },
-    });
+      get(target: T, p: string | symbol): any {
+        if (p === 'deleteFromIndex') {
+          return () => {
+            deleters.forEach((deleteFromIndexFunc) => deleteFromIndexFunc(proxy));
+          }
+        }
+        if (p === 'getTarget') {
+          return () => obj;
+        }
+        if (p === 'isProxy') {
+          return true;
+        }
+        // @ts-ignore
+        return target[p];
+      }
+    }) as IndexedObj<T>;
+
     ingestors.forEach((ingestIntoIndex) => ingestIntoIndex(proxy));
 
     return proxy;

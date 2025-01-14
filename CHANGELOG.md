@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.2](https://github.com/Antman261/proxy-indexer/compare/v0.3.1...v0.3.2) (2024-11-16)
+
+
+### Features
+
+* **getTarget:** Expose proxy target ([#5](https://github.com/Antman261/proxy-indexer/issues/5)) ([f16f01e](https://github.com/Antman261/proxy-indexer/commit/f16f01ebd7843417ea52a909e8e89917211121fd))
+
+### [0.3.1](https://github.com/Antman261/proxy-indexer/compare/v0.3.0...v0.3.1) (2024-08-26)
+
+## [0.3.0](https://github.com/Antman261/proxy-indexer/compare/v0.2.0...v0.3.0) (2024-08-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **delete from index:** Object type returned from capture function has been extended with a deleteFromIndex
+method
+
+### Features
+
+* **delete from index:** add ability to delete captured objects from indexes ([0fcb1b7](https://github.com/Antman261/proxy-indexer/commit/0fcb1b74a69e03228fd4b337a0bf5c2ab864a739))
+
 ## [0.2.0](https://github.com/Antman261/proxy-indexer/compare/v0.1.1...v0.2.0) (2023-03-12)
 
 

@@ -62,8 +62,9 @@ describe('Performance tests', function () {
     console.log(`Vanilla update: ${vanillaUpdateMs}ms`);
     console.log(`Indexed update: ${indexedUpdatedMs}ms`);
     console.log(`Updates are ${updateSlowdownRatio.toFixed(2)} times slower`);
+    const { deleteFromIndex, ...objUpdated} = objToUpdate;
     expect(placed?.size).to.eq(31_249);
-    expect(objToUpdate).to.deep.eq({ num: 100_000, status: 'SHIPPED' });
+    expect(objUpdated).to.deep.eq({ num: 100_000, status: 'SHIPPED' });
     expect(updateSlowdownRatio).to.be.lte(2);
   });
 });

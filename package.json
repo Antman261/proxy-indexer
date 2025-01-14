@@ -1,6 +1,6 @@
 {
   "name": "proxy-indexer",
-  "version": "0.2.0",
+  "version": "0.3.2",
   "description": "Create self-updating, easy to use in-memory indexes.",
   "repository": {
     "type": "git",
@@ -32,6 +32,9 @@
     ],
     "watch-files": [
       "src/**/*.ts",
+      "test/**/*.ts"
+    ],
+    "spec": [
       "test/**/*.ts"
     ],
     "require": "ts-node/register"
